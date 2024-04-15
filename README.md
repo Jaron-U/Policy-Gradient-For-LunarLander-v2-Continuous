@@ -43,18 +43,6 @@ env = gym.make("LunarLander-v2", continuous=True)
 ```
  A detailed description of the environment can be found [here](https://gymnasium.farama.org/environments/box2d/lunar_lander/).
 
-Recall the policy gradient theorems(s) form the lecture:  
-$$
-\nabla V_{\pi_\theta} = \mathbb{E}_{\tau\sim P_{\mathrm{traj},\theta}(\cdot)} \bigg[ R(\tau)\sum_{t=0}^{\infty} \nabla\log\pi_{\theta}(s_t,a_t) \bigg] \qquad\qquad\qquad\qquad\qquad (1)
-$$  
-$$
-\nabla V_{\pi_\theta} = \mathbb{E}_{\tau\sim P_{\mathrm{traj},\theta}(\cdot)} \bigg[ \sum_{t=0}^\infty \gamma^t Q_{\pi_\theta}(s_t,a_t) \nabla\log\pi_\theta(s_t,a_t) \bigg] \qquad\qquad\qquad\quad(2)
-$$  
-$$
-\nabla V_{\pi_\theta} = \mathbb{E}_{\tau\sim P_{\mathrm{traj},\theta}(\cdot)} \bigg[ \sum_{t=0}^\infty \gamma^t A_{\pi_\theta}(s_t,a_t) \nabla\log\pi_\theta(s_t,a_t) \bigg] \qquad\qquad\quad\qquad (3)
-$$
-
-
 1. **REINFORCE Algorithm:** Implement Eq.1. You should include the training curve in the PDF (x-axis is the number of episode and the y-axis should be episodic undiscounted-cumulative reward). Use a sliding window average to get smooth plots. Include a description of the hyperparameters used. Try to find the optimal hyperparameters that will enable fast convergence to the optimal policy.  
 
 2. **Policy Gradient Algorithm:** Implement Eq.2 and produce similar results as above.
