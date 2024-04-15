@@ -37,7 +37,7 @@
 
 ### Problems
 
-In this homework, you will train a policy gradient algorithm to land a lunar lander \emph{with continuous  actions} on the surface of the moon. We will use the Lunar Lander environment (LunarLander-v2) from  Gymnasium. The environment consists of a lander with continuous  actions and a continuous state space. To make it continuous, construct an instance as following:
+In this homework, you will train a policy gradient algorithm to land a lunar lander **with continuous  actions** on the surface of the moon. We will use the Lunar Lander environment (LunarLander-v2) from  Gymnasium. The environment consists of a lander with continuous  actions and a continuous state space. To make it continuous, construct an instance as following:
 ```
 env = gym.make("LunarLander-v2", continuous=True)
 ```
