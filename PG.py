@@ -27,6 +27,8 @@ import argparse
 import numpy as np
 import math
 from collections import deque
+from gym.wrappers import RecordVideo
+import matplotlib.pyplot as plt
 
 class value_network(nn.Module):
     '''
@@ -212,6 +214,23 @@ class PGAgent():
             '''
             ###### TYPE YOUR CODE HERE ######
             # Do steps 1-3
+
+            # 1. Compute discounted reward
+            r_t = torch.zeros(rewards_ten.shape[0],1).to(self.device)
+            d_r = 0
+            for i in reversed(range(len(rewards_ten))):
+                d_r = rewards_ten[i] + self.discount * d_r * n_dones_ten[i]
+                r_t[i] = d_r
+            
+            # 2. Compute log probabilities
+            log_probs = self.policy.get_log_prob(states_ten, action_ten)
+
+            # 3. Compute policy loss and update the policy
+            policy_loss = -(log_probs * r_t).mean()
+            self.optimizer_policy.zero_grad()
+            policy_loss.backward()
+            self.optimizer_policy.step()
+
             ################################# 
 
         if update_type == 'Gt':
@@ -264,13 +283,13 @@ class PGAgent():
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     parser.add_argument("--env", default="LunarLander-v2")           # Gymnasium environment name
-    parser.add_argument("--seed", default=0, type=int)               # Sets Gym, PyTorch and Numpy seeds
-    parser.add_argument("--n-iter", default=200, type=int)           # Maximum number of training iterations
-    parser.add_argument("--discount", default=0.99)                  # Discount factor
-    parser.add_argument("--batch-size", default=5000, type=int)      # Training samples in each batch of training
-    parser.add_argument("--lr", default=5e-3,type=float)             # Learning rate
+    parser.add_argument("--seed", default=42, type=int)               # Sets Gym, PyTorch and Numpy seeds //0
+    parser.add_argument("--n-iter", default=200, type=int)           # Maximum number of training iterations //200
+    parser.add_argument("--discount", default=0.99)                  # Discount factor //0.99
+    parser.add_argument("--batch-size", default=6000, type=int)      # Training samples in each batch of training //5000
+    parser.add_argument("--lr", default=1e-3,type=float)             # Learning rate //5e-3
     parser.add_argument("--gpu-index", default=0,type=int)           # GPU index
-    parser.add_argument("--algo", default="Baseline",type=str)       # PG algorithm type. Baseline/Gt/Rt
+    parser.add_argument("--algo", default="Rt",type=str)       # PG algorithm type. Baseline/Gt/Rt
     args = parser.parse_args()
 
     # Making the environment    
@@ -296,7 +315,7 @@ if __name__ == "__main__":
     learner = PGAgent(**kwargs) # Creating the PG learning agent
 
     moving_window = deque(maxlen=10)
-
+    avg_rewards = []
     for e in range(args.n_iter):
         '''
         Steps of PG algorithm
@@ -309,8 +328,10 @@ if __name__ == "__main__":
         learner.update(states,actions,rewards,n_dones,args.algo)
         eval_reward= learner.sample_traj(evaluate=True)
         moving_window.append(eval_reward)
-        print('Training Iteration {} Training Reward: {:.2f} Evaluation Reward: {:.2f} \
-        Average Evaluation Reward: {:.2f}'.format(e,train_reward,eval_reward,np.mean(moving_window)))
+
+        if e%10 == 0:
+            print('Training Iteration {} Training Reward: {:.2f} Evaluation Reward: {:.2f} \
+            Average Evaluation Reward: {:.2f}'.format(e,train_reward,eval_reward,np.mean(moving_window)))
         
         """
         TODO: Write code for
@@ -318,4 +339,29 @@ if __name__ == "__main__":
         2. Rendering the trained agent 
         """
         ###### TYPE YOUR CODE HERE ######
+        # save the average rewards
+        avg_rewards.append(np.mean(moving_window))
+
+    # save the video of the trained agent
+    env_rgb = gym.make(args.env,continuous=True, render_mode='rgb_array')
+    env_record = RecordVideo(env_rgb, video_folder='./videos')
+    state, _ = env_record.reset(seed=args.seed)
+    for t in range(1000):
+        state_ten = torch.from_numpy(state).float().unsqueeze(0)
+        with torch.no_grad():
+            action = learner.policy.select_action(state_ten)[0].numpy()
+        action = action.astype(np.float64)
+        n_state,_,done,_,_ = env_record.step(action)
+        state = n_state
+        if done:
+            break
+    env_record.close()
+
+    # plot the average rewards
+    plt.figure(figsize=(10,5))
+    plt.plot(avg_rewards)
+    plt.xlabel('Training Iteration')
+    plt.ylabel('Average Reward')
+    plt.title('Average Reward vs Training Iteration')
+    plt.savefig('average_rewards.png')
         #################################
