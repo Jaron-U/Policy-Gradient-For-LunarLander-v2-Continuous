@@ -149,7 +149,7 @@ class PGAgent():
             states, actions, rewards,not_dones, episodic reward     
         '''
         self.policy.to("cpu") #Move network to CPU for sampling
-        env = gym.make(args.env,continuous=True)
+        env = gym.make(args.env)
         states = []
         actions = []
         rewards = []
@@ -311,18 +311,18 @@ class PGAgent():
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
-    parser.add_argument("--env", default="LunarLander-v2")           # Gymnasium environment name
+    parser.add_argument("--env", default="BipedalWalker-v3")           # Gymnasium environment name
     parser.add_argument("--seed", default=0, type=int)               # Sets Gym, PyTorch and Numpy seeds //0
     parser.add_argument("--n-iter", default=200, type=int)           # Maximum number of training iterations //200
-    parser.add_argument("--discount", default=0.99)                  # Discount factor //0.99
+    parser.add_argument("--discount", default=0.993)                  # Discount factor //0.99
     parser.add_argument("--batch-size", default=8000, type=int)      # Training samples in each batch of training //5000
-    parser.add_argument("--lr", default=3e-3,type=float)             # Learning rate //5e-3
+    parser.add_argument("--lr", default=5e-3,type=float)             # Learning rate //5e-3
     parser.add_argument("--gpu-index", default=0,type=int)           # GPU index
-    parser.add_argument("--algo", default="Gt",type=str)       # PG algorithm type. Baseline/Gt/Rt
+    parser.add_argument("--algo", default="Baseline",type=str)       # PG algorithm type. Baseline/Gt/Rt
     args = parser.parse_args()
 
     # Making the environment    
-    env = gym.make(args.env,continuous=True)
+    env = gym.make(args.env)
 
     # Setting seeds
     torch.manual_seed(args.seed)
@@ -372,10 +372,10 @@ if __name__ == "__main__":
         avg_rewards.append(np.mean(moving_window))
 
     # save the video of the trained agent
-    env_rgb = gym.make(args.env,continuous=True, render_mode='rgb_array')
-    env_record = RecordVideo(env_rgb, video_folder='./videos')
+    env_rgb = gym.make(args.env, render_mode='rgb_array')
+    env_record = RecordVideo(env_rgb, video_folder='./videos_walker')
     state, _ = env_record.reset(seed=args.seed)
-    for t in range(600):
+    for t in range(1000):
         state_ten = torch.from_numpy(state).float().unsqueeze(0)
         with torch.no_grad():
              action = learner.policy(state_ten)[0][0].numpy()
