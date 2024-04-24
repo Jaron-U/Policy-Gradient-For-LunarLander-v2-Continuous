@@ -278,11 +278,9 @@ class PGAgent():
 
             ###### TYPE YOUR CODE HERE ######
             # Compute reward_to_go (gt) and advantages  
-            for i in reversed(range(len(rewards_ten))):
-                if i == len(rewards_ten) - 1 or n_dones_ten[i] == 0:
-                    gt[i] = rewards_ten[i]
-                else:
-                    gt[i] = rewards_ten[i] + self.discount * gt[i+1]
+            gt[-1] = rewards_ten[-1]
+            for i in reversed(range(len(rewards_ten)-1)):
+                gt[i] = rewards_ten[i] + self.discount * gt[i+1] * n_dones_ten[i]
                 
             advantages = gt - values_adv
             #################################
