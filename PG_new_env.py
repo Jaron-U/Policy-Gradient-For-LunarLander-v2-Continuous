@@ -40,18 +40,40 @@ class value_network(nn.Module):
             state_dim (int): state dimenssion
         '''
         super(value_network, self).__init__()
-        self.l1 = nn.Linear(state_dim, 64)
-        self.l2 = nn.Linear(64, 64)
-        self.l3 = nn.Linear(64, 1)
+        # self.l1 = nn.Linear(state_dim, 64)
+        # self.l2 = nn.Linear(64, 64)
+        # self.l3 = nn.Linear(64, 1)
+        self.conv2 = nn.Conv2d(3, 16, kernel_size=5, stride=2)
+        self.conv3 = nn.Conv2d(16, 32, kernel_size=5, stride=2)
+        self.conv4 = nn.Conv2d(32, 64, kernel_size=5, stride=2)
+
+        def conv2d_size_out(size, kernel_size=5, stride=2):
+            return (size - (kernel_size - 1) - 1) // stride  + 1
+        
+        size = conv2d_size_out(conv2d_size_out(conv2d_size_out(96)))
+        linear_input_size = size * size * 64
+
+        self.l1 = nn.Linear(linear_input_size, 64)
+        self.l2 = nn.Linear(64, 1)
 
     def forward(self,state):
         '''
         Input: State
         Output: Value of state
         '''
-        v = F.tanh(self.l1(state))
-        v = F.tanh(self.l2(v))
-        return self.l3(v)
+        # v = F.tanh(self.l1(state))
+        # v = F.tanh(self.l2(v))
+        # return self.l3(v)
+        state = state.permute(0, 3, 1, 2).float()
+        x = F.relu(self.conv2(state))
+        x = F.relu(self.conv3(x))
+        x = F.relu(self.conv4(x))
+
+        x = x.reshape(x.size(0), -1)
+
+        x = F.relu(self.l1(x))
+        x = self.l2(x)
+        return x
 
 
 class policy_network(nn.Module):
@@ -68,8 +90,21 @@ class policy_network(nn.Module):
         super(policy_network, self).__init__()
         self.state_dim = state_dim
         self.action_dim = action_dim
-        self.l1 = nn.Linear(state_dim,64)
-        self.l2 = nn.Linear(64,64)
+
+        # Convolutional layers
+        self.conv2 = nn.Conv2d(3, 16, kernel_size=5, stride=2)
+        self.conv3 = nn.Conv2d(16, 32, kernel_size=5, stride=2)
+        self.conv4 = nn.Conv2d(32, 64, kernel_size=5, stride=2)
+        
+        # Compute the flatten size after convolutions
+        def conv2d_size_out(size, kernel_size=5, stride=2):
+            return (size - (kernel_size - 1) - 1) // stride  + 1
+        
+        size = conv2d_size_out(conv2d_size_out(conv2d_size_out(96)))
+        linear_input_size = size * size * 64
+
+        self.l1 = nn.Linear(linear_input_size,64)
+        # self.l2 = nn.Linear(64,64)
         self.mean = nn.Linear(64,action_dim)
         self.log_std = nn.Parameter(torch.ones(1, action_dim) * log_std)
 
@@ -79,8 +114,13 @@ class policy_network(nn.Module):
         Input: State
         Output: Mean, log_std and std of action
         '''
-        a = F.tanh(self.l1(state))
-        a = F.tanh(self.l2(a))
+        state = state.permute(0, 3, 1, 2).float()
+        a = F.relu(self.conv2(state))
+        a = F.relu(self.conv3(a))
+        a = F.relu(self.conv4(a))
+
+        a = a.reshape(a.size(0), -1)
+        a = F.relu(self.l1(a))
         a_mean = self.mean(a)
         a_log_std = self.log_std.expand_as(a_mean)
         a_std = torch.exp(a_log_std)        
@@ -149,7 +189,7 @@ class PGAgent():
             states, actions, rewards,not_dones, episodic reward     
         '''
         self.policy.to("cpu") #Move network to CPU for sampling
-        env = gym.make(args.env,continuous=True)
+        env = gym.make(args.env)
         states = []
         actions = []
         rewards = []
@@ -158,7 +198,7 @@ class PGAgent():
         while len(states) < batch_size:
             state, _ = env.reset(seed=self.seed)
             curr_reward = 0
-            for t in range(1000):
+            for t in range(700):
                 state_ten = torch.from_numpy(state).float().unsqueeze(0)
                 with torch.no_grad():
                     if evaluate:
@@ -244,9 +284,11 @@ class PGAgent():
 
             ###### TYPE YOUR CODE HERE ######
             # Compute reward_to_go (gt) 
-            gt[-1] = rewards_ten[-1]
-            for i in reversed(range(len(rewards_ten)-1)):
-                gt[i] = rewards_ten[i] + self.discount * gt[i+1] * n_dones_ten[i]
+            for i in reversed(range(len(rewards_ten))):
+                if i == len(rewards_ten) - 1 or n_dones_ten[i] == 0:
+                    gt[i] = rewards_ten[i]
+                else:
+                    gt[i] = rewards_ten[i] + self.discount * gt[i+1]
             #################################
 
             gt = (gt - gt.mean()) / gt.std() #Helps with learning stablity
@@ -313,18 +355,18 @@ class PGAgent():
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
-    parser.add_argument("--env", default="LunarLander-v2")           # Gymnasium environment name
+    parser.add_argument("--env", default="CarRacing-v2")           # Gymnasium environment name
     parser.add_argument("--seed", default=0, type=int)               # Sets Gym, PyTorch and Numpy seeds //0
-    parser.add_argument("--n-iter", default=200, type=int)           # Maximum number of training iterations //200
+    parser.add_argument("--n-iter", default=50, type=int)           # Maximum number of training iterations //200
     parser.add_argument("--discount", default=0.99)                  # Discount factor //0.99
-    parser.add_argument("--batch-size", default=8000, type=int)      # Training samples in each batch of training //5000
-    parser.add_argument("--lr", default=3e-3,type=float)             # Learning rate //5e-3
+    parser.add_argument("--batch-size", default=1000, type=int)      # Training samples in each batch of training //5000
+    parser.add_argument("--lr", default=5e-3,type=float)             # Learning rate //5e-3
     parser.add_argument("--gpu-index", default=0,type=int)           # GPU index
-    parser.add_argument("--algo", default="Gt",type=str)       # PG algorithm type. Baseline/Gt/Rt
+    parser.add_argument("--algo", default="Rt",type=str)       # PG algorithm type. Baseline/Gt/Rt
     args = parser.parse_args()
 
     # Making the environment    
-    env = gym.make(args.env,continuous=True)
+    env = gym.make(args.env)
 
     # Setting seeds
     torch.manual_seed(args.seed)
@@ -374,10 +416,10 @@ if __name__ == "__main__":
         avg_rewards.append(np.mean(moving_window))
 
     # save the video of the trained agent
-    env_rgb = gym.make(args.env,continuous=True, render_mode='rgb_array')
-    env_record = RecordVideo(env_rgb, video_folder='./videos')
+    env_rgb = gym.make(args.env, render_mode='rgb_array')
+    env_record = RecordVideo(env_rgb, video_folder='./videos_new_env')
     state, _ = env_record.reset(seed=args.seed)
-    for t in range(600):
+    for t in range(1600):
         state_ten = torch.from_numpy(state).float().unsqueeze(0)
         with torch.no_grad():
              action = learner.policy(state_ten)[0][0].numpy()
