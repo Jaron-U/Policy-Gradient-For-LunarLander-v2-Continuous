@@ -281,12 +281,35 @@ class PGAgent():
 
             ###### TYPE YOUR CODE HERE ######
             # Compute reward_to_go (gt) and advantages  
+            for i in reversed(range(len(rewards_ten))):
+                if i == len(rewards_ten) - 1 or n_dones_ten[i] == 0:
+                    gt[i] = rewards_ten[i]
+                else:
+                    gt[i] = rewards_ten[i] + self.discount * gt[i+1]
+                
+            advantages = gt - values_adv
             #################################
 
             advantages = (advantages - advantages.mean()) / advantages.std()
 
             ###### TYPE YOUR CODE HERE ######
             # Do steps 5-7
+            
+            # 5. Update the value network to predict gt for each state (L2 norm)
+            value_adv_grad = self.value(states_ten)
+            value_loss = F.mse_loss(value_adv_grad, gt)
+            self.optimizer_value.zero_grad()
+            value_loss.backward()
+            self.optimizer_value.step()
+
+            # 6. Compute log probabilities and update the policy
+            log_probs = self.policy.get_log_prob(states_ten, action_ten)
+
+            policy_loss = -(log_probs * advantages).mean()
+            self.optimizer_policy.zero_grad()
+            policy_loss.backward()
+            self.optimizer_policy.step()
+
             #################################
 
 
@@ -296,11 +319,11 @@ if __name__ == "__main__":
     parser.add_argument("--env", default="LunarLander-v2")           # Gymnasium environment name
     parser.add_argument("--seed", default=0, type=int)               # Sets Gym, PyTorch and Numpy seeds //0
     parser.add_argument("--n-iter", default=200, type=int)           # Maximum number of training iterations //200
-    parser.add_argument("--discount", default=0.99)                  # Discount factor //0.99
+    parser.add_argument("--discount", default=0.992)                  # Discount factor //0.99
     parser.add_argument("--batch-size", default=8000, type=int)      # Training samples in each batch of training //5000
-    parser.add_argument("--lr", default=3e-3,type=float)             # Learning rate //5e-3
+    parser.add_argument("--lr", default=5e-3,type=float)             # Learning rate //5e-3
     parser.add_argument("--gpu-index", default=0,type=int)           # GPU index
-    parser.add_argument("--algo", default="Gt",type=str)       # PG algorithm type. Baseline/Gt/Rt
+    parser.add_argument("--algo", default="Baseline",type=str)       # PG algorithm type. Baseline/Gt/Rt
     args = parser.parse_args()
 
     # Making the environment    
