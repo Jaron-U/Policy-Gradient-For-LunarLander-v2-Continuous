@@ -358,7 +358,7 @@ if __name__ == "__main__":
     parser.add_argument("--batch-size", default=1000, type=int)      # Training samples in each batch of training //5000
     parser.add_argument("--lr", default=5e-3,type=float)             # Learning rate //5e-3
     parser.add_argument("--gpu-index", default=0,type=int)           # GPU index
-    parser.add_argument("--algo", default="Rt",type=str)       # PG algorithm type. Baseline/Gt/Rt
+    parser.add_argument("--algo", default="Baseline",type=str)       # PG algorithm type. Baseline/Gt/Rt
     args = parser.parse_args()
 
     # Making the environment    

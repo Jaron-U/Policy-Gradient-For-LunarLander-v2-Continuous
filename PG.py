@@ -314,11 +314,11 @@ if __name__ == "__main__":
     parser.add_argument("--env", default="LunarLander-v2")           # Gymnasium environment name
     parser.add_argument("--seed", default=0, type=int)               # Sets Gym, PyTorch and Numpy seeds //0
     parser.add_argument("--n-iter", default=200, type=int)           # Maximum number of training iterations //200
-    parser.add_argument("--discount", default=0.99)                  # Discount factor //0.99
+    parser.add_argument("--discount", default=0.992)                  # Discount factor //0.99
     parser.add_argument("--batch-size", default=8000, type=int)      # Training samples in each batch of training //5000
-    parser.add_argument("--lr", default=3e-3,type=float)             # Learning rate //5e-3
+    parser.add_argument("--lr", default=5e-3,type=float)             # Learning rate //5e-3
     parser.add_argument("--gpu-index", default=0,type=int)           # GPU index
-    parser.add_argument("--algo", default="Gt",type=str)       # PG algorithm type. Baseline/Gt/Rt
+    parser.add_argument("--algo", default="Baseline",type=str)       # PG algorithm type. Baseline/Gt/Rt
     args = parser.parse_args()
 
     # Making the environment    
