@@ -245,12 +245,23 @@ class PGAgent():
 
             ###### TYPE YOUR CODE HERE ######
             # Compute reward_to_go (gt) 
+            for i in reversed(range(len(rewards_ten))):
+                if i == len(rewards_ten) - 1 or n_dones_ten[i] == 0:
+                    gt[i] = rewards_ten[i]
+                else:
+                    gt[i] = rewards_ten[i] + self.discount * gt[i+1]
             #################################
 
             gt = (gt - gt.mean()) / gt.std() #Helps with learning stablity
 
             ###### TYPE YOUR CODE HERE ######
             # Compute log probabilities and update the policy
+            log_probs = self.policy.get_log_prob(states_ten, action_ten)
+
+            policy_loss = -(log_probs * gt).mean()
+            self.optimizer_policy.zero_grad()
+            policy_loss.backward()
+            self.optimizer_policy.step()
             #################################
 
         if update_type == 'Baseline':
@@ -285,11 +296,11 @@ if __name__ == "__main__":
     parser.add_argument("--env", default="LunarLander-v2")           # Gymnasium environment name
     parser.add_argument("--seed", default=0, type=int)               # Sets Gym, PyTorch and Numpy seeds //0
     parser.add_argument("--n-iter", default=200, type=int)           # Maximum number of training iterations //200
-    parser.add_argument("--discount", default=0.993)                  # Discount factor //0.99
+    parser.add_argument("--discount", default=0.99)                  # Discount factor //0.99
     parser.add_argument("--batch-size", default=8000, type=int)      # Training samples in each batch of training //5000
-    parser.add_argument("--lr", default=5e-3,type=float)             # Learning rate //5e-3
+    parser.add_argument("--lr", default=3e-3,type=float)             # Learning rate //5e-3
     parser.add_argument("--gpu-index", default=0,type=int)           # GPU index
-    parser.add_argument("--algo", default="Rt",type=str)       # PG algorithm type. Baseline/Gt/Rt
+    parser.add_argument("--algo", default="Gt",type=str)       # PG algorithm type. Baseline/Gt/Rt
     args = parser.parse_args()
 
     # Making the environment    
