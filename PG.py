@@ -218,8 +218,21 @@ class PGAgent():
             # 1. Compute discounted reward
             rt = torch.zeros(rewards_ten.shape[0],1).to(self.device)
             rt[-1] = rewards_ten[-1]
+            cr = [] # cumulative rewards
+            curr_r = rewards_ten[-1]
             for i in reversed(range(len(rewards_ten)-1)):
-                rt[i] = rewards_ten[i] + self.discount * rt[i+1]
+                if n_dones_ten[i] == 0:
+                    cr.append(curr_r) # append the current reward to the list
+                    curr_r = rewards_ten[i] # start a new trajectory
+                else:
+                    curr_r = self.discount * curr_r + rewards_ten[i]
+            cr.append(curr_r) # append the last reward
+
+            for i in range(len(rewards_ten)):
+                if n_dones_ten[i] == 1:
+                    rt[i] = cr[-1] # assign the cumulative reward to the each state of the trajectory
+                else:
+                    rt[i] = cr.pop()
             
             # 2. Compute log probabilities
             log_probs = self.policy.get_log_prob(states_ten, action_ten)
